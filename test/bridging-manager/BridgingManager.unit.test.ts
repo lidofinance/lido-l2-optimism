@@ -1,6 +1,6 @@
 import hre from "hardhat";
 import {
-  BridgingManager__factory,
+  BridgingManagerStub__factory,
   OssifiableProxy__factory,
 } from "../../typechain";
 import { assert } from "chai";
@@ -301,12 +301,13 @@ async function ctxFactory() {
     depositsEnabler,
     depositsDisabler,
     withdrawalsEnabler,
-    withdrawalsDisabler,
+    withdrawalsDisabler
   ] = await hre.ethers.getSigners();
 
-  const bridgingManagerImpl = await new BridgingManager__factory(
+  const bridgingManagerImpl = await new BridgingManagerStub__factory(
     deployer
   ).deploy();
+
   const pureOssifiableProxy = await new OssifiableProxy__factory(
     deployer
   ).deploy(bridgingManagerImpl.address, deployer.address, "0x");
@@ -314,7 +315,7 @@ async function ctxFactory() {
     deployer
   ).deploy(bridgingManagerImpl.address, deployer.address, "0x");
 
-  const bridgingManager = BridgingManager__factory.connect(
+  const bridgingManager = BridgingManagerStub__factory.connect(
     initializedOssifiableProxy.address,
     deployer
   );
@@ -367,7 +368,7 @@ async function ctxFactory() {
       withdrawalsDisabler,
     },
     bridgingManager,
-    bridgingManagerRaw: BridgingManager__factory.connect(
+    bridgingManagerRaw: BridgingManagerStub__factory.connect(
       pureOssifiableProxy.address,
       deployer
     ),

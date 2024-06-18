@@ -1,51 +1,263 @@
 import { assert } from "chai";
 import hre from "hardhat";
-import {
-  ERC20Bridged__factory,
-  OssifiableProxy__factory,
-} from "../../typechain";
+import { BigNumber } from "ethers";
 import { unit } from "../../utils/testing";
 import { wei } from "../../utils/wei";
+import { erc20BridgedPermitUnderProxy } from "../../utils/testing/contractsFactory";
+import {
+  ERC20BridgedPermit__factory,
+  ERC20BridgedWithInitializerStub__factory,
+  OssifiableProxy__factory,
+} from "../../typechain";
 
-unit("ERC20Bridged", ctxFactory)
-  .test("bridge()", async (ctx) => {
-    assert.equal(await ctx.erc20Bridged.bridge(), ctx.accounts.owner.address);
+unit("ERC20BridgedPermit", ctxFactory)
+
+  .test("constructor() :: zero params", async (ctx) => {
+    const { deployer, stranger, zero } = ctx.accounts;
+
+    await assert.revertsWith(new ERC20BridgedPermit__factory(
+      deployer
+    ).deploy(
+      "name",
+      "symbol",
+      "version",
+      0,
+      stranger.address
+    ), "ErrorZeroDecimals()");
+
+    await assert.revertsWith(new ERC20BridgedPermit__factory(
+      deployer
+    ).deploy(
+      "name",
+      "symbol",
+      "version",
+      18,
+      zero.address
+    ), "ErrorZeroAddressBridge()");
   })
 
-  .test("totalSupply()", async (ctx) => {
-    assert.equalBN(await ctx.erc20Bridged.totalSupply(), ctx.constants.premint);
+  .test("initial state", async (ctx) => {
+    const { erc20Bridged } = ctx;
+    const { decimals, name, symbol, version, premint } = ctx.constants;
+    const { owner } = ctx.accounts;
+    const [, eip712Name, eip712Version, , , ,] = await erc20Bridged.eip712Domain();
+
+    assert.equal(eip712Name, name);
+    assert.equal(eip712Version, version);
+    assert.equal(await erc20Bridged.name(), name);
+    assert.equal(await erc20Bridged.symbol(), symbol);
+    assert.equalBN(await erc20Bridged.decimals(), decimals);
+    assert.equal(await erc20Bridged.bridge(), owner.address);
+    assert.equalBN(await erc20Bridged.totalSupply(), premint);
   })
 
-  .test("initialize() :: name already set", async (ctx) => {
+  .test("initialize() :: petrified", async (ctx) => {
     const { deployer, owner } = ctx.accounts;
 
     // deploy new implementation
-    const erc20BridgedImpl = await new ERC20Bridged__factory(deployer).deploy(
-      "Name",
-      "",
+    const erc20BridgedImpl = await new ERC20BridgedPermit__factory(deployer).deploy(
+      "name",
+      "symbol",
+      "version",
       9,
       owner.address
     );
+
+    const petrifiedVersionMark = hre.ethers.constants.MaxUint256;
+    assert.equalBN(await erc20BridgedImpl.getContractVersion(), petrifiedVersionMark);
+
+    // an early check of metadata won't allow to see NonZeroContractVersionOnInit() error
     await assert.revertsWith(
-      erc20BridgedImpl.initialize("New Name", ""),
-      "ErrorNameAlreadySet()"
+      erc20BridgedImpl.initialize("name", "symbol", "version"),
+      "ErrorMetadataIsAlreadyInitialized()"
     );
   })
 
-  .test("initialize() :: symbol already set", async (ctx) => {
+  .test("initialize() :: don't allow to initialize with empty metadata", async (ctx) => {
     const { deployer, owner } = ctx.accounts;
+    const { name, symbol, version } = ctx.constants;
+
+    const l2TokenImpl = await new ERC20BridgedPermit__factory(deployer).deploy(
+      "wstETH",
+      "wst",
+      "1",
+      9,
+      owner.address
+    );
+
+    await assert.revertsWith(
+      new OssifiableProxy__factory(deployer).deploy(
+        l2TokenImpl.address,
+        deployer.address,
+        ERC20BridgedPermit__factory.createInterface().encodeFunctionData("initialize", [
+          "",
+          symbol,
+          version
+        ])
+      ),
+      "ErrorNameIsEmpty()"
+    );
+    await assert.revertsWith(
+      new OssifiableProxy__factory(deployer).deploy(
+        l2TokenImpl.address,
+        deployer.address,
+        ERC20BridgedPermit__factory.createInterface().encodeFunctionData("initialize", [
+          name,
+          "",
+          version
+        ])
+      ),
+      "ErrorSymbolIsEmpty()"
+    );
+  })
+
+  .test("initialize() :: don't allow to initialize twice", async (ctx) => {
+    const { deployer, owner, holder } = ctx.accounts;
+    const { name, symbol, version } = ctx.constants;
 
     // deploy new implementation
-    const erc20BridgedImpl = await new ERC20Bridged__factory(deployer).deploy(
-      "",
+    const l2TokenImpl = await new ERC20BridgedPermit__factory(deployer).deploy(
+      "wstETH",
+      "wst",
+      "1",
+      9,
+      owner.address
+    );
+
+    const l2TokensProxy = await new OssifiableProxy__factory(deployer).deploy(
+      l2TokenImpl.address,
+      deployer.address,
+      ERC20BridgedPermit__factory.createInterface().encodeFunctionData("initialize", [
+        name,
+        symbol,
+        version
+      ])
+    );
+
+    const erc20BridgedProxied = ERC20BridgedPermit__factory.connect(
+      l2TokensProxy.address,
+      holder
+    );
+
+    assert.equalBN(await erc20BridgedProxied.getContractVersion(), 2);
+
+    await assert.revertsWith(
+      erc20BridgedProxied.initialize(name, symbol, version),
+      "ErrorMetadataIsAlreadyInitialized()"
+    );
+  })
+
+  .test("finalizeUpgrade_v2() :: metadata uninitialized", async (ctx) => {
+    const { deployer, owner } = ctx.accounts;
+    const { name, version } = ctx.constants;
+
+    // deploy new implementation
+    const l2TokenImpl = await new ERC20BridgedPermit__factory(deployer).deploy(
+      "name",
       "Symbol",
+      "1",
       9,
       owner.address
     );
-    await assert.revertsWith(
-      erc20BridgedImpl.initialize("", "New Symbol"),
-      "ErrorSymbolAlreadySet()"
+
+    await assert.revertsWith(new OssifiableProxy__factory(deployer).deploy(
+      l2TokenImpl.address,
+      deployer.address,
+      ERC20BridgedPermit__factory.createInterface().encodeFunctionData("finalizeUpgrade_v2", [
+        name,
+        version
+      ])
+    ), "ErrorMetadataIsNotInitialized()");
+  })
+
+  .test("finalizeUpgrade_v2() :: metadata initialized", async (ctx) => {
+    const { deployer, owner } = ctx.accounts;
+    const { name, version } = ctx.constants;
+
+    const l2TokenOldImpl = await new ERC20BridgedWithInitializerStub__factory(deployer).deploy(
+      "name",
+      "symbol",
+      18,
+      owner.address
     );
+
+    const l2TokenProxy = await new OssifiableProxy__factory(deployer).deploy(
+      l2TokenOldImpl.address,
+      deployer.address,
+      ERC20BridgedWithInitializerStub__factory.createInterface().encodeFunctionData("initializeERC20Metadata", [
+        "name",
+        "symbol"
+      ])
+    );
+
+    const erc20BridgedProxied = ERC20BridgedPermit__factory.connect(
+      l2TokenProxy.address,
+      owner
+    );
+
+    const l2TokenImpl = await new ERC20BridgedPermit__factory(deployer).deploy(
+      "name",
+      "symbol",
+      "1",
+      18,
+      owner.address
+    );
+
+    await l2TokenProxy.proxy__upgradeToAndCall(
+      l2TokenImpl.address,
+      ERC20BridgedPermit__factory.createInterface().encodeFunctionData("finalizeUpgrade_v2", [
+        name,
+        version
+      ]),
+      false
+    );
+
+    assert.equalBN(await erc20BridgedProxied.getContractVersion(), 2);
+
+    // can't initialize after finalizeUpgrade_v2
+    await assert.revertsWith(
+      erc20BridgedProxied.initialize("name", "symbol", "version"),
+      "ErrorMetadataIsAlreadyInitialized()"
+    );
+  })
+
+  .test("initialize() :: ins't allowed to call instead of finalizeUpgrade_v2()", async (ctx) => {
+    const { deployer, owner } = ctx.accounts;
+    const { name, symbol, version } = ctx.constants;
+
+    const l2TokenOldImpl = await new ERC20BridgedWithInitializerStub__factory(deployer).deploy(
+      "name",
+      "symbol",
+      18,
+      owner.address
+    );
+
+    const l2TokenProxy = await new OssifiableProxy__factory(deployer).deploy(
+      l2TokenOldImpl.address,
+      deployer.address,
+      ERC20BridgedWithInitializerStub__factory.createInterface().encodeFunctionData("initializeERC20Metadata", [
+        "name",
+        "symbol"
+      ])
+    );
+
+    const l2TokenImpl = await new ERC20BridgedPermit__factory(deployer).deploy(
+      "name",
+      "symbol",
+      "1",
+      18,
+      owner.address
+    );
+
+    await assert.revertsWith(l2TokenProxy.proxy__upgradeToAndCall(
+      l2TokenImpl.address,
+      ERC20BridgedPermit__factory.createInterface().encodeFunctionData("initialize", [
+        name,
+        symbol,
+        version
+      ]),
+      false
+    ), "ErrorMetadataIsAlreadyInitialized()");
   })
 
   .test("approve()", async (ctx) => {
@@ -306,175 +518,6 @@ unit("ERC20Bridged", ctxFactory)
     );
   })
 
-  .test("increaseAllowance() :: initial allowance is zero", async (ctx) => {
-    const { erc20Bridged } = ctx;
-    const { holder, spender } = ctx.accounts;
-
-    // validate allowance before increasing
-    assert.equalBN(
-      await erc20Bridged.allowance(holder.address, spender.address),
-      "0"
-    );
-
-    const allowanceIncrease = wei`1 ether`;
-
-    // increase allowance
-    const tx = await erc20Bridged.increaseAllowance(
-      spender.address,
-      allowanceIncrease
-    );
-
-    // validate Approval event was emitted
-    await assert.emits(erc20Bridged, tx, "Approval", [
-      holder.address,
-      spender.address,
-      allowanceIncrease,
-    ]);
-
-    // validate allowance was updated correctly
-    assert.equalBN(
-      await erc20Bridged.allowance(holder.address, spender.address),
-      allowanceIncrease
-    );
-  })
-
-  .test("increaseAllowance() :: initial allowance is not zero", async (ctx) => {
-    const { erc20Bridged } = ctx;
-    const { holder, spender } = ctx.accounts;
-
-    const initialAllowance = wei`2 ether`;
-
-    // set initial allowance
-    await erc20Bridged.approve(spender.address, initialAllowance);
-
-    // validate allowance before increasing
-    assert.equalBN(
-      await erc20Bridged.allowance(holder.address, spender.address),
-      initialAllowance
-    );
-
-    const allowanceIncrease = wei`1 ether`;
-
-    // increase allowance
-    const tx = await erc20Bridged.increaseAllowance(
-      spender.address,
-      allowanceIncrease
-    );
-
-    const expectedAllowance = wei
-      .toBigNumber(initialAllowance)
-      .add(allowanceIncrease);
-
-    // validate Approval event was emitted
-    await assert.emits(erc20Bridged, tx, "Approval", [
-      holder.address,
-      spender.address,
-      expectedAllowance,
-    ]);
-
-    // validate allowance was updated correctly
-    assert.equalBN(
-      await erc20Bridged.allowance(holder.address, spender.address),
-      expectedAllowance
-    );
-  })
-
-  .test("increaseAllowance() :: the increase is not zero", async (ctx) => {
-    const { erc20Bridged } = ctx;
-    const { holder, spender } = ctx.accounts;
-
-    const initialAllowance = wei`2 ether`;
-
-    // set initial allowance
-    await erc20Bridged.approve(spender.address, initialAllowance);
-
-    // validate allowance before increasing
-    assert.equalBN(
-      await erc20Bridged.allowance(holder.address, spender.address),
-      initialAllowance
-    );
-
-    // increase allowance
-    const tx = await erc20Bridged.increaseAllowance(spender.address, "0");
-
-    // validate Approval event was emitted
-    await assert.emits(erc20Bridged, tx, "Approval", [
-      holder.address,
-      spender.address,
-      initialAllowance,
-    ]);
-
-    // validate allowance was updated correctly
-    assert.equalBN(
-      await erc20Bridged.allowance(holder.address, spender.address),
-      initialAllowance
-    );
-  })
-
-  .test(
-    "decreaseAllowance() :: decrease is greater than current allowance",
-    async (ctx) => {
-      const { erc20Bridged } = ctx;
-      const { holder, spender } = ctx.accounts;
-
-      // validate allowance before increasing
-      assert.equalBN(
-        await erc20Bridged.allowance(holder.address, spender.address),
-        "0"
-      );
-
-      const allowanceDecrease = wei`1 ether`;
-
-      // decrease allowance
-      await assert.revertsWith(
-        erc20Bridged.decreaseAllowance(spender.address, allowanceDecrease),
-        "ErrorDecreasedAllowanceBelowZero()"
-      );
-    }
-  )
-
-  .group([wei`1 ether`, "0"], (allowanceDecrease) => [
-    `decreaseAllowance() :: the decrease is ${allowanceDecrease} wei`,
-    async (ctx) => {
-      const { erc20Bridged } = ctx;
-      const { holder, spender } = ctx.accounts;
-
-      const initialAllowance = wei`2 ether`;
-
-      // set initial allowance
-      await erc20Bridged.approve(spender.address, initialAllowance);
-
-      // validate allowance before increasing
-      assert.equalBN(
-        await erc20Bridged.allowance(holder.address, spender.address),
-        initialAllowance
-      );
-
-      // decrease allowance
-      const tx = await erc20Bridged.decreaseAllowance(
-        spender.address,
-        allowanceDecrease
-      );
-
-      const expectedAllowance = wei
-        .toBigNumber(initialAllowance)
-        .sub(allowanceDecrease);
-
-      // validate Approval event was emitted
-      await assert.emits(erc20Bridged, tx, "Approval", [
-        holder.address,
-        spender.address,
-        expectedAllowance,
-      ]);
-
-      // validate allowance was updated correctly
-      assert.equalBN(
-        await erc20Bridged.allowance(holder.address, spender.address),
-        expectedAllowance
-      );
-    },
-  ])
-
   .test("bridgeMint() :: not owner", async (ctx) => {
     const { erc20Bridged } = ctx;
     const { stranger } = ctx.accounts;
@@ -595,45 +638,44 @@ unit("ERC20Bridged", ctxFactory)
   .run();
 
 async function ctxFactory() {
+  /// ---------------------------
+  /// constants
+  /// ---------------------------
   const name = "ERC20 Test Token";
   const symbol = "ERC20";
-  const decimals = 18;
+  const version = "1";
+  const decimals = BigNumber.from(18);
   const premint = wei`100 ether`;
-  const [deployer, owner, recipient, spender, holder, stranger] =
-    await hre.ethers.getSigners();
-  const l2TokenImpl = await new ERC20Bridged__factory(deployer).deploy(
+
+  const [deployer, owner, recipient, spender, holder, stranger] = await hre.ethers.getSigners();
+  const zero = await hre.ethers.getSigner(hre.ethers.constants.AddressZero);
+
+  /// ---------------------------
+  /// contracts
+  /// ---------------------------
+  const erc20BridgedProxied = await erc20BridgedPermitUnderProxy(
+    deployer,
+    holder,
     name,
     symbol,
+    version,
     decimals,
     owner.address
-  );
+  )
+
+  /// ---------------------------
+  /// setup
+  /// ---------------------------
+  await erc20BridgedProxied.connect(owner).bridgeMint(holder.address, premint);
 
   await hre.network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [hre.ethers.constants.AddressZero],
   });
 
-  const zero = await hre.ethers.getSigner(hre.ethers.constants.AddressZero);
-
-  const l2TokensProxy = await new OssifiableProxy__factory(deployer).deploy(
-    l2TokenImpl.address,
-    deployer.address,
-    ERC20Bridged__factory.createInterface().encodeFunctionData("initialize", [
-      name,
-      symbol,
-    ])
-  );
-
-  const erc20BridgedProxied = ERC20Bridged__factory.connect(
-    l2TokensProxy.address,
-    holder
-  );
-
-  await erc20BridgedProxied.connect(owner).bridgeMint(holder.address, premint);
-
   return {
     accounts: { deployer, owner, recipient, spender, holder, zero, stranger },
-    constants: { name, symbol, decimals, premint },
+    constants: { name, symbol, version, decimals, premint },
     erc20Bridged: erc20BridgedProxied,
   };
 }

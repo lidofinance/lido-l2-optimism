@@ -2,13 +2,6 @@
 =======================
 
 =======================
-➡ BridgeableTokens
-=======================
-
-| Name | Type | Slot | Offset | Bytes | Contract |
-|------|------|------|--------|-------|----------|
-
-=======================
 ➡ BridgingManager
 =======================
 
@@ -34,6 +27,16 @@
 | allowance   | mapping(address => mapping(address => uint256)) | 2    | 0      | 32    | contracts/token/ERC20Bridged.sol:ERC20Bridged |
 
 =======================
+➡ ERC20BridgedPermit
+=======================
+
+| Name        | Type                                            | Slot | Offset | Bytes | Contract                                                  |
+|-------------|-------------------------------------------------|------|--------|-------|-----------------------------------------------------------|
+| totalSupply | uint256                                         | 0    | 0      | 32    | contracts/token/ERC20BridgedPermit.sol:ERC20BridgedPermit |
+| balanceOf   | mapping(address => uint256)                     | 1    | 0      | 32    | contracts/token/ERC20BridgedPermit.sol:ERC20BridgedPermit |
+| allowance   | mapping(address => mapping(address => uint256)) | 2    | 0      | 32    | contracts/token/ERC20BridgedPermit.sol:ERC20BridgedPermit |
+
+=======================
 ➡ ERC20Core
 =======================
 
@@ -51,23 +54,74 @@
 |------|------|------|--------|-------|----------|
 
 =======================
-➡ L1ERC20TokenBridge
+➡ ERC20RebasableBridged
+=======================
+
+| Name | Type | Slot | Offset | Bytes | Contract |
+|------|------|------|--------|-------|----------|
+
+=======================
+➡ ERC20RebasableBridgedPermit
+=======================
+
+| Name | Type | Slot | Offset | Bytes | Contract |
+|------|------|------|--------|-------|----------|
+
+=======================
+➡ L1LidoTokensBridge
 =======================
 
 | Name   | Type                                              | Slot | Offset | Bytes | Contract                                                     |
 |--------|---------------------------------------------------|------|--------|-------|--------------------------------------------------------------|
-| _roles | mapping(bytes32 => struct AccessControl.RoleData) | 0    | 0      | 32    | contracts/optimism/L1ERC20TokenBridge.sol:L1ERC20TokenBridge |
+| _roles | mapping(bytes32 => struct AccessControl.RoleData) | 0    | 0      | 32    | contracts/optimism/L1LidoTokensBridge.sol:L1LidoTokensBridge |
 
 =======================
-➡ L2ERC20TokenBridge
+➡ L2ERC20ExtendedTokensBridge
 =======================
 
-| Name   | Type                                              | Slot | Offset | Bytes | Contract                                                     |
-|--------|---------------------------------------------------|------|--------|-------|--------------------------------------------------------------|
-| _roles | mapping(bytes32 => struct AccessControl.RoleData) | 0    | 0      | 32    | contracts/optimism/L2ERC20TokenBridge.sol:L2ERC20TokenBridge |
+| Name   | Type                                              | Slot | Offset | Bytes | Contract                                                                       |
+|--------|---------------------------------------------------|------|--------|-------|--------------------------------------------------------------------------------|
+| _roles | mapping(bytes32 => struct AccessControl.RoleData) | 0    | 0      | 32    | contracts/optimism/L2ERC20ExtendedTokensBridge.sol:L2ERC20ExtendedTokensBridge |
+
+=======================
+➡ OpStackTokenRatePusher
+=======================
+
+| Name | Type | Slot | Offset | Bytes | Contract |
+|------|------|------|--------|-------|----------|
 
 =======================
 ➡ OssifiableProxy
+=======================
+
+| Name | Type | Slot | Offset | Bytes | Contract |
+|------|------|------|--------|-------|----------|
+
+=======================
+➡ RebasableAndNonRebasableTokens
+=======================
+
+| Name | Type | Slot | Offset | Bytes | Contract |
+|------|------|------|--------|-------|----------|
+
+=======================
+➡ TokenRateNotifier
+=======================
+
+| Name      | Type      | Slot | Offset | Bytes | Contract                                               |
+|-----------|-----------|------|--------|-------|--------------------------------------------------------|
+| _owner    | address   | 0    | 0      | 20    | contracts/lido/TokenRateNotifier.sol:TokenRateNotifier |
+| observers | address[] | 1    | 0      | 32    | contracts/lido/TokenRateNotifier.sol:TokenRateNotifier |
+
+=======================
+➡ TokenRateOracle
+=======================
+
+| Name | Type | Slot | Offset | Bytes | Contract |
+|------|------|------|--------|-------|----------|
+
+=======================
+➡ Versioned
 =======================
 
 | Name | Type | Slot | Offset | Bytes | Contract |

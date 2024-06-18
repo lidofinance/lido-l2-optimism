@@ -5,7 +5,8 @@ import { wei } from "../../utils/wei";
 import optimism from "../../utils/optimism";
 import testing, { scenario } from "../../utils/testing";
 import { BridgingManagerRole } from "../../utils/bridging-management";
-import { L1ERC20TokenBridge__factory } from "../../typechain";
+import { L1LidoTokensBridge__factory } from "../../typechain";
+import { BigNumber } from 'ethers'
 
 const REVERT = env.bool("REVERT", true);
 
@@ -22,28 +23,28 @@ scenario("Optimism :: Launch integration test", ctxFactory)
   })
 
   .step("Enable deposits", async (ctx) => {
-    const { l1ERC20TokenBridge } = ctx;
-    assert.isFalse(await l1ERC20TokenBridge.isDepositsEnabled());
+    const { l1LidoTokensBridge } = ctx;
+    assert.isFalse(await l1LidoTokensBridge.isDepositsEnabled());
 
-    await l1ERC20TokenBridge.enableDeposits();
-    assert.isTrue(await l1ERC20TokenBridge.isDepositsEnabled());
+    await l1LidoTokensBridge.enableDeposits();
+    assert.isTrue(await l1LidoTokensBridge.isDepositsEnabled());
   })
 
   .step("Renounce role", async (ctx) => {
-    const { l1ERC20TokenBridge, l1DevMultisig } = ctx;
+    const { l1LidoTokensBridge, l1DevMultisig } = ctx;
     assert.isTrue(
-      await l1ERC20TokenBridge.hasRole(
+      await l1LidoTokensBridge.hasRole(
         BridgingManagerRole.DEPOSITS_ENABLER_ROLE.hash,
         await l1DevMultisig.getAddress()
       )
     );
 
-    await l1ERC20TokenBridge.renounceRole(
+    await l1LidoTokensBridge.renounceRole(
       BridgingManagerRole.DEPOSITS_ENABLER_ROLE.hash,
       await l1DevMultisig.getAddress()
     );
     assert.isFalse(
-      await l1ERC20TokenBridge.hasRole(
+      await l1LidoTokensBridge.hasRole(
         BridgingManagerRole.DEPOSITS_ENABLER_ROLE.hash,
         await l1DevMultisig.getAddress()
       )
@@ -55,9 +56,9 @@ scenario("Optimism :: Launch integration test", ctxFactory)
 async function ctxFactory() {
   const networkName = env.network("TESTING_OPT_NETWORK", "mainnet");
 
-  const { l1Provider, l2Provider, l1ERC20TokenBridge } = await optimism
+  const { l1Provider, l2Provider, l1LidoTokensBridge } = await optimism
     .testing(networkName)
-    .getIntegrationTestSetup();
+    .getIntegrationTestSetup(BigNumber.from('1164454276599657236000000000'));
 
   const hasDeployedContracts = testing.env.USE_DEPLOYED_CONTRACTS(false);
   const l1DevMultisig = hasDeployedContracts
@@ -73,8 +74,8 @@ async function ctxFactory() {
     l1Provider
   );
 
-  const l1ERC20TokenBridgeImpl = L1ERC20TokenBridge__factory.connect(
-    l1ERC20TokenBridge.address,
+  const l1LidoTokensBridgeImpl = L1LidoTokensBridge__factory.connect(
+    l1LidoTokensBridge.address,
     l1DevMultisig
   );
 
@@ -82,7 +83,7 @@ async function ctxFactory() {
     l1Provider,
     l2Provider,
     l1DevMultisig,
-    l1ERC20TokenBridge: l1ERC20TokenBridgeImpl,
+    l1LidoTokensBridge: l1LidoTokensBridgeImpl,
     snapshot: {
       l1: l1Snapshot,
       l2: l2Snapshot,

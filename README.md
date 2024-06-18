@@ -5,6 +5,7 @@ This project contains the implementations of the L2 ERC20 token bridge for Optim
 To retrieve more detailed info about the bridging process, see the specifications for certain chains:
 
 - [Lido's Optimism Bridge](https://github.com/lidofinance/lido-l2/blob/main/contracts/optimism/README.md).
+- [wstETH Bridging Guide](https://docs.lido.fi/token-guides/wsteth-bridging-guide/#r-5-bridging-l1-lido-dao-decisions)
 
 ## Project setup
 
@@ -41,7 +42,16 @@ Fill the newly created `.env` file with the required variables. See the [Project
 
 The configuration of the deployment scripts happens via the ENV variables. The following variables are required:
 
-- [`TOKEN`](#TOKEN) - address of the token to deploy a new bridge on the Ethereum chain.
+- [`TOKEN`](#TOKEN) - address of the non-rebasable token to deploy a new bridge on the Ethereum chain.
+- [`REBASABLE_TOKEN`] (#REBASABLE_TOKEN) - address of the rebasable token to deploy new bridge on the Ethereum chain.
+- [`L1_OP_STACK_TOKEN_RATE_PUSHER`](#L1_OP_STACK_TOKEN_RATE_PUSHER) - address of token rate pusher. Required to config TokenRateOracle.
+- [`L2_GAS_LIMIT_FOR_PUSHING_TOKEN_RATE`](#L2_GAS_LIMIT_FOR_PUSHING_TOKEN_RATE) - gas limit required to complete pushing token rate on L2.This value was calculated by formula: l2GasLimit = (gas cost of L2Bridge.finalizeDeposit() + OptimismPortal.minimumGasLimit(depositData.length)) * 1.5
+- [`TOKEN_RATE_OUTDATED_DELAY`](#TOKEN_RATE_OUTDATED_DELAY) - a time period when token rate can be considered outdated. Default is 86400 (24 hours).
+- [`L1_TOKEN_BRIDGE`](#L1_TOKEN_BRIDGE) - address of L1 token bridge.
+- [`L2_TOKEN_BRIDGE`](#L2_TOKEN_BRIDGE) - address of L2 token bridge.
+- [`L2_TOKEN`](#L2_TOKEN) - address of the non-rebasable token on L2.
+- [`L2_TOKEN_RATE_ORACLE`](#L2_TOKEN_RATE_ORACLE) - address of token rate oracle on L2.
+- [`GOV_BRIDGE_EXECUTOR`](#GOV_BRIDGE_EXECUTOR) - address of bridge executor.
 - [`NETWORK`](#NETWORK) - name of the network environments used by deployment scripts. Allowed values: `mainnet`, `sepolia`.
 - [`FORKING`](#FORKING) - run deployment in the forking network instead of real ones
 - [`ETH_DEPLOYER_PRIVATE_KEY`](#ETH_DEPLOYER_PRIVATE_KEY) - The private key of the deployer account in the Ethereum network is used during the deployment process.
@@ -234,7 +244,11 @@ Below variables used in the Optimism bridge deployment process.
 
 #### `TOKEN`
 
-Address of the token to deploy a new bridge on the Ethereum chain.
+Address of the existing non-rebasable token to deploy a new bridge for on the Ethereum chain.
+
+#### `REBASABLE_TOKEN`
+
+Address of the existing rebasable token to deploy new bridge for on the Ethereum chain.
 
 #### `NETWORK`
 

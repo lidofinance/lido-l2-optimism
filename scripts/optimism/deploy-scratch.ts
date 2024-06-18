@@ -1,9 +1,9 @@
 import env from "../../utils/env";
 import prompt from "../../utils/prompt";
 import network from "../../utils/network";
-import optimism from "../../utils/optimism";
 import deployment from "../../utils/deployment";
 import { BridgingManagement } from "../../utils/bridging-management";
+import deploymentAll from "../../utils/optimism/deployment";
 
 async function main() {
   const networkName = env.network();
@@ -21,23 +21,45 @@ async function main() {
 
   const deploymentConfig = deployment.loadMultiChainDeploymentConfig();
 
-  const [l1DeployScript, l2DeployScript] = await optimism
-    .deployment(networkName, { logger: console })
-    .erc20TokenBridgeDeployScript(
-      deploymentConfig.token,
+  const [l1DeployScript, l2DeployScript] = await deploymentAll (networkName, { logger: console })
+    .deployAllScript(
       {
+        l1TokenNonRebasable: deploymentConfig.l1TokenNonRebasable,
+        l1TokenRebasable: deploymentConfig.l1RebasableToken,
+        accountingOracle: deploymentConfig.accountingOracle,
+        l2GasLimitForPushingTokenRate: deploymentConfig.l2GasLimitForPushingTokenRate,
+        lido: deploymentConfig.lido,
+
         deployer: ethDeployer,
         admins: {
           proxy: deploymentConfig.l1.proxyAdmin,
-          bridge: ethDeployer.address,
+          bridge: ethDeployer.address
         },
+        contractsShift: 0,
       },
       {
+        tokenRateOracle: {
+          tokenRateOutdatedDelay: deploymentConfig.tokenRateOutdatedDelay,
+          maxAllowedL2ToL1ClockLag: deploymentConfig.maxAllowedL2ToL1ClockLag,
+          maxAllowedTokenRateDeviationPerDayBp: deploymentConfig.maxAllowedTokenRateDeviationPerDayBp,
+          oldestRateAllowedInPauseTimeSpan: deploymentConfig.oldestRateAllowedInPauseTimeSpan,
+          minTimeBetweenTokenRateUpdates: deploymentConfig.minTimeBetweenTokenRateUpdates,
+          tokenRate: deploymentConfig.tokenRateValue,
+          l1Timestamp: deploymentConfig.tokenRateL1Timestamp
+        },
+        l2TokenNonRebasable: {
+          version: "1"
+        },
+        l2TokenRebasable: {
+          version: "1"
+        },
+
         deployer: optDeployer,
         admins: {
           proxy: deploymentConfig.l2.proxyAdmin,
           bridge: optDeployer.address,
         },
+        contractsShift: 0,
       }
     );
 
@@ -55,22 +77,20 @@ async function main() {
   await l1DeployScript.run();
   await l2DeployScript.run();
 
-  const l1ERC20TokenBridgeProxyDeployStepIndex = 1;
   const l1BridgingManagement = new BridgingManagement(
-    l1DeployScript.getContractAddress(l1ERC20TokenBridgeProxyDeployStepIndex),
+    l1DeployScript.bridgeProxyAddress,
     ethDeployer,
     { logger: console }
   );
 
-  const l2ERC20TokenBridgeProxyDeployStepIndex = 3;
   const l2BridgingManagement = new BridgingManagement(
-    l2DeployScript.getContractAddress(l2ERC20TokenBridgeProxyDeployStepIndex),
+    l2DeployScript.tokenBridgeProxyAddress,
     optDeployer,
     { logger: console }
   );
 
-  await l1BridgingManagement.setup(deploymentConfig.l1);
-  await l2BridgingManagement.setup(deploymentConfig.l2);
+   await l1BridgingManagement.setup(deploymentConfig.l1);
+   await l2BridgingManagement.setup(deploymentConfig.l2);
 }
 
 main().catch((error) => {

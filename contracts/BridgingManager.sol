@@ -1,11 +1,11 @@
-// SPDX-FileCopyrightText: 2022 Lido <info@lido.fi>
+// SPDX-FileCopyrightText: 2024 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.10;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-/// @author psirex
+/// @author psirex, kovalgek
 /// @notice Contains administrative methods to retrieve and control the state of the bridging
 contract BridgingManager is AccessControl {
     /// @dev Stores the state of the bridging
@@ -13,6 +13,9 @@ contract BridgingManager is AccessControl {
     /// @param isDepositsEnabled Stores the state of the deposits
     /// @param isWithdrawalsEnabled Stores the state of the withdrawals
     struct State {
+        /// @dev This variable is used to determine whether the contract has been initialized or not.
+        /// At the same time, bridges have their own code for initialization and storage versioning.
+        /// Therefore, it is recommended to base upgrade logic on new mechanisms since v2.
         bool isInitialized;
         bool isDepositsEnabled;
         bool isWithdrawalsEnabled;
@@ -34,12 +37,15 @@ contract BridgingManager is AccessControl {
     /// @notice Initializes the contract to grant DEFAULT_ADMIN_ROLE to the admin_ address
     /// @dev This method might be called only once
     /// @param admin_ Address of the account to grant the DEFAULT_ADMIN_ROLE
-    function initialize(address admin_) external {
+    function _initializeBridgingManager(address admin_) internal {
+        if (admin_ == address(0)) {
+            revert ErrorZeroAddressAdmin();
+        }
         State storage s = _loadState();
         if (s.isInitialized) {
             revert ErrorAlreadyInitialized();
         }
-        _setupRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
         s.isInitialized = true;
         emit Initialized(admin_);
     }
@@ -97,6 +103,11 @@ contract BridgingManager is AccessControl {
         emit WithdrawalsDisabled(msg.sender);
     }
 
+    function _isBridgingManagerInitialized() internal view returns (bool) {
+        State storage s = _loadState();
+        return s.isInitialized;
+    }
+
     /// @dev Returns the reference to the slot with State struct
     function _loadState() private pure returns (State storage r) {
         bytes32 slot = STATE_SLOT;
@@ -127,9 +138,11 @@ contract BridgingManager is AccessControl {
     event WithdrawalsDisabled(address indexed disabler);
     event Initialized(address indexed admin);
 
+    error ErrorZeroAddressAdmin();
     error ErrorDepositsEnabled();
     error ErrorDepositsDisabled();
     error ErrorWithdrawalsEnabled();
     error ErrorWithdrawalsDisabled();
     error ErrorAlreadyInitialized();
+    error ErrorBridgingManagerIsNotInitialized();
 }
