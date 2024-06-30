@@ -30,7 +30,7 @@ async function main() {
         l2GasLimitForPushingTokenRate: deploymentConfig.l2GasLimitForPushingTokenRate,
 
         l1TokenBridge: deploymentConfig.l1TokenBridge,
-
+        lido: deploymentConfig.lido,
         deployer: ethDeployer,
         admins: {
           proxy: deploymentConfig.l1.proxyAdmin,
@@ -56,12 +56,12 @@ async function main() {
         l2TokenBridge: deploymentConfig.l2TokenBridge,
 
         l2TokenNonRebasable: {
-          address: deploymentConfig.l2TokenNonRebasable,
-          version: "1"
+          address: deploymentConfig.l2TokenNonRebasableAddress,
+          version: deploymentConfig.l2TokenNonRebasableVersion
         },
 
         l2TokenRebasable: {
-          version: "1"
+          version: deploymentConfig.l2TokenRebasableVersion
         },
 
         deployer: optDeployer,

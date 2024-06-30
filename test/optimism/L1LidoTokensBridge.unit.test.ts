@@ -3,7 +3,7 @@ import hre, { ethers } from "hardhat";
 import { BigNumber } from "ethers";
 import {
   ERC20BridgedStub__factory,
-  ERC20WrapperStub__factory,
+  WstETHStub__factory,
   L1LidoTokensBridge__factory,
   BridgingManagerStub__factory,
   L2ERC20ExtendedTokensBridge__factory,
@@ -1345,7 +1345,7 @@ async function getL1LidoTokensBridgeImpl(
     "L1R"
   );
 
-  const l1TokenNonRebasableStub = await new ERC20WrapperStub__factory(deployer).deploy(
+  const l1TokenNonRebasableStub = await new WstETHStub__factory(deployer).deploy(
     l1TokenRebasableStub.address,
     "L1 Token Non Rebasable",
     "L1NR",
@@ -1357,7 +1357,7 @@ async function getL1LidoTokensBridgeImpl(
     "L2NR"
   );
 
-  const l2TokenRebasableStub = await new ERC20WrapperStub__factory(deployer).deploy(
+  const l2TokenRebasableStub = await new WstETHStub__factory(deployer).deploy(
     l2TokenNonRebasableStub.address,
     "L2 Token Rebasable",
     "L2R",

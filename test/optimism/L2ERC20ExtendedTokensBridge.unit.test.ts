@@ -10,13 +10,14 @@ import {
   nonRebasableFromRebasableL1,
   nonRebasableFromRebasableL2,
   rebasableFromNonRebasableL1,
-  rebasableFromNonRebasableL2
+  rebasableFromNonRebasableL2,
+  almostEqual
 } from "../../utils/testing/helpers";
 import testing, { unit } from "../../utils/testing";
 import { wei } from "../../utils/wei";
 import {
   ERC20BridgedStub__factory,
-  ERC20WrapperStub__factory,
+  WstETHStub__factory,
   TokenRateOracle__factory,
   ERC20RebasableBridgedPermit__factory,
   L1LidoTokensBridge__factory,
@@ -1263,7 +1264,7 @@ async function ctxFactory() {
     "L1R"
   );
 
-  const l1TokenNonRebasableStub = await new ERC20WrapperStub__factory(deployer).deploy(
+  const l1TokenNonRebasableStub = await new WstETHStub__factory(deployer).deploy(
     l1TokenRebasableStub.address,
     "L1 Token Non Rebasable",
     "L1NR",
@@ -1439,7 +1440,7 @@ async function getL2TokenBridgeImpl(deployer: SignerWithAddress, l1TokenBridge: 
     "L1R"
   );
 
-  const l1TokenNonRebasableStub = await new ERC20WrapperStub__factory(deployer).deploy(
+  const l1TokenNonRebasableStub = await new WstETHStub__factory(deployer).deploy(
     l1TokenRebasableStub.address,
     "L1 Token Non Rebasable",
     "L1NR",
@@ -1503,9 +1504,4 @@ async function getL2TokenBridgeImpl(deployer: SignerWithAddress, l1TokenBridge: 
     l2TokenRebasableStub.address
   );
   return l2TokenBridgeImpl;
-}
-
-function almostEqual(num1: BigNumber, num2: BigNumber) {
-  const delta = (num1.sub(num2)).abs();
-  return delta.lte(BigNumber.from('2'));
 }

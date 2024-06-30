@@ -58,7 +58,7 @@ async function ctxFactory() {
 
   const { l1Provider, l2Provider, l1LidoTokensBridge } = await optimism
     .testing(networkName)
-    .getIntegrationTestSetup(BigNumber.from('1164454276599657236000000000'));
+    .getIntegrationTestSetup();
 
   const hasDeployedContracts = testing.env.USE_DEPLOYED_CONTRACTS(false);
   const l1DevMultisig = hasDeployedContracts

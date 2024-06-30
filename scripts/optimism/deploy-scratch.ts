@@ -29,7 +29,6 @@ async function main() {
         accountingOracle: deploymentConfig.accountingOracle,
         l2GasLimitForPushingTokenRate: deploymentConfig.l2GasLimitForPushingTokenRate,
         lido: deploymentConfig.lido,
-
         deployer: ethDeployer,
         admins: {
           proxy: deploymentConfig.l1.proxyAdmin,

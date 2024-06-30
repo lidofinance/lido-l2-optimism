@@ -136,7 +136,6 @@ scenario("Optimism :: Bridging integration test", ctxFactory)
 async function ctxFactory() {
   const networkName = env.network("TESTING_OPT_NETWORK", "mainnet");
   console.log("networkName=", networkName);
-  const exchangeRate = BigNumber.from('1164454276599657236000000000');
 
   const {
     l1Provider,
@@ -144,7 +143,7 @@ async function ctxFactory() {
     l1ERC20ExtendedTokensBridgeAdmin,
     l2ERC20ExtendedTokensBridgeAdmin,
     ...contracts
-  } = await optimism.testing(networkName).getIntegrationTestSetup(exchangeRate);
+  } = await optimism.testing(networkName).getIntegrationTestSetup();
 
   const l1Snapshot = await l1Provider.send("evm_snapshot", []);
   const l2Snapshot = await l2Provider.send("evm_snapshot", []);

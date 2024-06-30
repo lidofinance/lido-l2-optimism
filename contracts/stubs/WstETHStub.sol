@@ -9,8 +9,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20WstETH} from "../optimism/TokenRateAndUpdateTimestampProvider.sol";
 import {IERC20Wrapper} from "../token/interfaces/IERC20Wrapper.sol";
 
+/// @author kovalgek
 /// @dev represents wstETH on L1. For testing purposes.
-contract ERC20WrapperStub is IERC20Wrapper, IERC20WstETH, ERC20 {
+contract WstETHStub is IERC20Wrapper, IERC20WstETH, ERC20 {
 
     IERC20 public stETH;
     address public bridge;

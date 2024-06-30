@@ -581,16 +581,16 @@ function ctxFactory(depositAmount: BigNumber, withdrawalAmount: BigNumber) {
   return async () => {
     const networkName = env.network("TESTING_OPT_NETWORK", "mainnet");
     const tokenRateDecimals = BigNumber.from(27);
-    const totalPooledEther = BigNumber.from('9309904612343950493629678');
-    const totalShares = BigNumber.from('7975822843597609202337218');
 
     const {
+      totalPooledEther,
+      totalShares,
       l1Provider,
       l2Provider,
       l1ERC20ExtendedTokensBridgeAdmin,
       l2ERC20ExtendedTokensBridgeAdmin,
       ...contracts
-    } = await optimism.testing(networkName).getIntegrationTestSetup(totalPooledEther, totalShares);
+    } = await optimism.testing(networkName).getIntegrationTestSetup();
 
     const l1Snapshot = await l1Provider.send("evm_snapshot", []);
     const l2Snapshot = await l2Provider.send("evm_snapshot", []);

@@ -28,8 +28,12 @@ interface MultiChainDeploymentConfig {
   tokenRateValue: BigNumber;
   tokenRateL1Timestamp: BigNumber;
 
-  /// wstETH address to upgrade
-  l2TokenNonRebasable: string;
+  /// L2 wstETH address to upgrade
+  l2TokenNonRebasableAddress: string;
+  l2TokenNonRebasableVersion: string;
+
+  /// L2 stETH
+  l2TokenRebasableVersion: string;
 
   /// bridge
   l2TokenBridge: string;
@@ -59,7 +63,11 @@ export function loadMultiChainDeploymentConfig(): MultiChainDeploymentConfig {
     tokenRateValue: BigNumber.from(env.string("TOKEN_RATE")),
     tokenRateL1Timestamp: BigNumber.from(env.string("TOKEN_RATE_L1_TIMESTAMP")),
 
-    l2TokenNonRebasable: env.address("L2_TOKEN_NON_REBASABLE"),
+    l2TokenNonRebasableAddress: env.address("L2_TOKEN_NON_REBASABLE"),
+    l2TokenNonRebasableVersion: env.address("L2_TOKEN_NON_REBASABLE_VERSION"),
+
+    l2TokenRebasableVersion:  env.address("L2_TOKEN_REBASABLE_VERSION"),
+
     l2TokenBridge: env.address("L2_TOKEN_BRIDGE"),
 
     govBridgeExecutor: env.address("GOV_BRIDGE_EXECUTOR"),

@@ -12,8 +12,11 @@ import {
   OpStackTokenRatePusher__factory
 } from "../../typechain";
 
-interface OptDeployScriptParams extends DeployScriptParams {
+interface OptL1DeployScriptParams extends DeployScriptParams {
   lido: string;
+  l2GasLimitForPushingTokenRate: BigNumber;
+  accountingOracle: string;
+  l1Token: string;
 }
 
 interface OptL2DeployScriptParams extends DeployScriptParams {
@@ -24,6 +27,8 @@ interface OptL2DeployScriptParams extends DeployScriptParams {
     minTimeBetweenTokenRateUpdates: BigNumber;
     tokenRate: BigNumber;
     l1Timestamp: BigNumber;
+    l2ERC20TokenBridge: string;
+    tokenRateOutdatedDelay: BigNumber;
   }
 }
 
@@ -72,12 +77,7 @@ export default function deploymentOracle(
   const optAddresses = addresses(networkName, options);
   return {
     async oracleDeployScript(
-      l1Token: string,
-      l2ERC20TokenBridge: string,
-      accountingOracle: string,
-      l2GasLimitForPushingTokenRate: number,
-      tokenRateOutdatedDelay: number,
-      l1Params: OptDeployScriptParams,
+      l1Params: OptL1DeployScriptParams,
       l2Params: OptL2DeployScriptParams,
     ): Promise<[OracleL1DeployScript, OracleL2DeployScript]> {
 
@@ -111,10 +111,10 @@ export default function deploymentOracle(
           factory: OpStackTokenRatePusher__factory,
           args: [
             optAddresses.L1CrossDomainMessenger,
-            l1Token,
-            accountingOracle,
+            l1Params.l1Token,
+            l1Params.accountingOracle,
             expectedL2TokenRateOracleProxyAddress,
-            l2GasLimitForPushingTokenRate,
+            l1Params.l2GasLimitForPushingTokenRate,
             options?.overrides,
           ],
           afterDeploy: (c) =>
@@ -131,9 +131,9 @@ export default function deploymentOracle(
           factory: TokenRateOracle__factory,
           args: [
             optAddresses.L2CrossDomainMessenger,
-            l2ERC20TokenBridge,
+            l2Params.tokenRateOracle.l2ERC20TokenBridge,
             expectedL1OpStackTokenRatePusherImplAddress,
-            tokenRateOutdatedDelay,
+            l2Params.tokenRateOracle.tokenRateOutdatedDelay,
             l2Params.tokenRateOracle.maxAllowedL2ToL1ClockLag,
             l2Params.tokenRateOracle.maxAllowedTokenRateDeviationPerDayBp,
             l2Params.tokenRateOracle.oldestRateAllowedInPauseTimeSpan,

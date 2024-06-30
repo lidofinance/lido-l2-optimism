@@ -5,11 +5,12 @@ import {
   IERC20,
   ERC20Bridged,
   IERC20__factory,
+  IStETH__factory,
   L1LidoTokensBridge,
   L2ERC20ExtendedTokensBridge,
   ERC20BridgedPermit__factory,
   ERC20BridgedStub__factory,
-  ERC20WrapperStub__factory,
+  WstETHStub__factory,
   TokenRateOracle__factory,
   L1LidoTokensBridge__factory,
   L2ERC20ExtendedTokensBridge__factory,
@@ -17,6 +18,7 @@ import {
   ERC20RebasableBridgedPermit__factory,
   AccountingOracleStub__factory,
   IAccountingOracle__factory,
+  StETHStub__factory
 } from "../../typechain";
 import addresses from "./addresses";
 import contracts from "./contracts";
@@ -48,20 +50,21 @@ export default function testing(networkName: NetworkName) {
         ...bridgeContracts,
       };
     },
-    async getIntegrationTestSetup(
-      totalPooledEther: BigNumber,
-      totalShares: BigNumber
-    ) {
-      const hasDeployedContracts =
-        testingUtils.env.USE_DEPLOYED_CONTRACTS(false);
+    async getIntegrationTestSetup() {
+      const hasDeployedContracts = testingUtils.env.USE_DEPLOYED_CONTRACTS(false);
+      const [ethProvider, optProvider] = ethOptNetworks.getProviders({ forking: true });
 
-      const [ethProvider, optProvider] = ethOptNetworks.getProviders({
-        forking: true,
-      });
+      var totalPooledEther = BigNumber.from('9309904612343950493629678');
+      var totalShares = BigNumber.from('7975822843597609202337218');
 
       const bridgeContracts = hasDeployedContracts
         ? await loadDeployedBridges(ethProvider, optProvider)
         : await deployTestBridge(networkName, totalPooledEther, totalShares, ethProvider, optProvider);
+
+      if (hasDeployedContracts) {
+        totalPooledEther = await bridgeContracts.l1TokenRebasable.getTotalPooledEther();
+        totalShares = await bridgeContracts.l1TokenRebasable.getTotalShares();
+      }
 
       const [l1ERC20ExtendedTokensAdminAddress] =
         await BridgingManagement.getAdmins(bridgeContracts.l1LidoTokensBridge);
@@ -100,6 +103,8 @@ export default function testing(networkName: NetworkName) {
       const optContracts = contracts(networkName, { forking: true });
 
       return {
+        totalPooledEther: totalPooledEther,
+        totalShares: totalShares,
         l1Provider: ethProvider,
         l2Provider: optProvider,
         l1TokensHolder,
@@ -160,11 +165,11 @@ async function loadDeployedBridges(
   l2SignerOrProvider: SignerOrProvider
 ) {
   return {
-    l1Token: ERC20WrapperStub__factory.connect(
+    l1Token: WstETHStub__factory.connect(
       testingUtils.env.OPT_L1_NON_REBASABLE_TOKEN(),
       l1SignerOrProvider
     ),
-    l1TokenRebasable: IERC20__factory.connect(
+    l1TokenRebasable: IStETH__factory.connect(
       testingUtils.env.OPT_L1_REBASABLE_TOKEN(),
       l1SignerOrProvider
     ),
@@ -194,30 +199,43 @@ async function deployTestBridge(
   ethProvider: JsonRpcProvider,
   optProvider: JsonRpcProvider
 ) {
-  const tokenRate = BigNumber.from(10).pow(27)
-    .mul(totalPooledEther)
-    .div(totalShares);
+  // stETH config
+  const l1TokenRebasableName = "Test Token Rebasable";
+  const l1TokenRebasableSymbol = "TTR";
+
+  // wstETH config
+  const l1TokenNonRebasableName = "Test Non Rebasable Token";
+  const l1TokenNonRebasableSymbol = "TT";
+
+  // OpStackPusher
+  const l2GasLimitForPushingTokenRate = BigNumber.from(300_000);
+
+  // Accounting oracle config
   const genesisTime = 1;
   const secondsPerSlot = 2;
   const lastProcessingRefSlot = 3;
+
+  // Token rate oracle config
   const maxAllowedL2ToL1ClockLag = BigNumber.from(86400);
   const maxAllowedTokenRateDeviationPerDay = BigNumber.from(500);
   const oldestRateAllowedInPauseTimeSpan = BigNumber.from(86400*3);
   const minTimeBetweenTokenRateUpdates = BigNumber.from(3600);
   const tokenRateOutdatedDelay = BigNumber.from(86400);
+  const tokenRate = BigNumber.from(10).pow(27).mul(totalPooledEther).div(totalShares);
+  const l1TokenRateUpdate = BigNumber.from('1000');
 
   const ethDeployer = testingUtils.accounts.deployer(ethProvider);
   const optDeployer = testingUtils.accounts.deployer(optProvider);
 
-  const l1TokenRebasable = await new ERC20BridgedStub__factory(ethDeployer).deploy(
-    "Test Token Rebasable",
-    "TTR"
+  const l1TokenRebasable = await new StETHStub__factory(ethDeployer).deploy(
+    l1TokenRebasableName,
+    l1TokenRebasableSymbol
   );
 
-  const l1TokenNonRebasable = await new ERC20WrapperStub__factory(ethDeployer).deploy(
+  const l1TokenNonRebasable = await new WstETHStub__factory(ethDeployer).deploy(
     l1TokenRebasable.address,
-    "Test Non Rebasable Token",
-    "TT",
+    l1TokenNonRebasableName,
+    l1TokenNonRebasableSymbol,
     totalPooledEther,
     totalShares
   );
@@ -235,16 +253,14 @@ async function deployTestBridge(
       l1TokenNonRebasable: l1TokenNonRebasable.address,
       l1TokenRebasable: l1TokenRebasable.address,
       accountingOracle: accountingOracle.address,
-      l2GasLimitForPushingTokenRate: BigNumber.from(300_000),
+      l2GasLimitForPushingTokenRate: l2GasLimitForPushingTokenRate,
       lido: ethDeployer.address,
+
       deployer: ethDeployer,
       admins: { proxy: ethDeployer.address, bridge: ethDeployer.address },
       contractsShift: 0
     },
     {
-      deployer: optDeployer,
-      admins: { proxy: optDeployer.address, bridge: optDeployer.address },
-      contractsShift: 0,
       tokenRateOracle: {
         tokenRateOutdatedDelay: tokenRateOutdatedDelay,
         maxAllowedL2ToL1ClockLag: maxAllowedL2ToL1ClockLag,
@@ -252,7 +268,7 @@ async function deployTestBridge(
         oldestRateAllowedInPauseTimeSpan: oldestRateAllowedInPauseTimeSpan,
         minTimeBetweenTokenRateUpdates: minTimeBetweenTokenRateUpdates,
         tokenRate: tokenRate,
-        l1Timestamp: BigNumber.from('1000')
+        l1Timestamp: l1TokenRateUpdate
       },
       l2TokenNonRebasable: {
         name: "wstETH",
@@ -265,7 +281,11 @@ async function deployTestBridge(
         symbol: "ST",
         version: "1",
         decimals: 18
-      }
+      },
+
+      deployer: optDeployer,
+      admins: { proxy: optDeployer.address, bridge: optDeployer.address },
+      contractsShift: 0,
     }
   );
 

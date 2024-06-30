@@ -10,7 +10,7 @@ import {
   ITokenRateOracle__factory,
   ITokenRatePusher__factory,
   ERC20BridgedStub__factory,
-  ERC20WrapperStub__factory,
+  WstETHStub__factory,
   AccountingOracleStub__factory
 
 } from "../../typechain";
@@ -133,7 +133,7 @@ async function ctxFactory() {
     "L1R"
   );
 
-  const l1TokenNonRebasableStub = await new ERC20WrapperStub__factory(deployer).deploy(
+  const l1TokenNonRebasableStub = await new WstETHStub__factory(deployer).deploy(
     l1TokenRebasableStub.address,
     "L1 Token Non Rebasable",
     "L1NR",

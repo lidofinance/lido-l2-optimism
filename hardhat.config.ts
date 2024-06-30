@@ -27,6 +27,15 @@ const config: HardhatUserConfig = {
     ],
   },
   networks: {
+    hardhat: {
+      chains: {
+        11155420: {
+          hardforkHistory: {
+            london: 13983909
+          }
+        }
+      }
+    },
     // Ethereum Public Chains
     eth_mainnet: {
       url: env.string("RPC_ETH_MAINNET", ""),
